@@ -31,7 +31,7 @@ game1 = pd.pivot_table(game,index=['Game_ID'], columns=['Location'], values=['Ga
 game1.columns = ['Game_Date','Game_Date_2','Season','Season_2','Team_A','Team_H']
 game1 = game1.drop('Game_Date_2',1)
 game1 = game1.drop('Season_2',1)
-#,'Game_ID'
+
 
 game2 = pd.pivot_table(game,index=['Game_ID'], columns=['Location'], values=['Wins_Entering_Gm', \
                        'Losses_Entering_Gm', 'Team_Minutes', 'Final_Score', 'Lead_Changes', \
@@ -58,13 +58,10 @@ dfgame['Team_H'] = dfgame['Team_H'] + '_H'
 
 dfTeamA = pd.get_dummies(dfgame['Team_A'])
 dfTeamH = pd.get_dummies(dfgame['Team_H'])
-#dfLocation = pd.get_dummies(game['Location'])
 dfgame = dfgame.join(dfTeamA)
 dfgame = dfgame.join(dfTeamH)
-#dfgame = dfgame.join(dfLocation)
 dfgame = dfgame.drop('Team_A',1)
 dfgame = dfgame.drop('Team_H',1)
-#dfgame = dfgame.drop('Location',1)
 dfgame = dfgame.join(dfyear)
 dfgame = dfgame.join(dfmonth)
 dfgame = dfgame.join(dfday)
@@ -83,14 +80,6 @@ for i in gp_for:
 dfgame.to_csv('gametst.csv')
 
 
-#dfTeam = pd.get_dummies(game['Team'])
-#dfLocation = pd.get_dummies(game['Location'])
-#
-#dfgame = game.join(dfTeam)
-#dfgame = dfgame.join(dfLocation)
-#dfgame = dfgame.drop('Team',1)
-#dfgame = dfgame.drop('Location',1)
-
 
 
 dfTeam = dfgame.iloc[:,25:85].T.groupby([s.split('_')[0] for s in dfgame.iloc[:,25:85].T.index.values]).sum().T
@@ -106,18 +95,8 @@ df3 = df3.drop('Team_Minutes_H',1)
 train_cols = df3.columns[2:95] #64
 views_for = views.columns.tolist()
 
-train_cols2 = df3.columns[2:23].union(df3.columns[24:64])
-train_cols3 = df3.columns[2:54]
-train_cols4 = df3.columns[12:54]
-train_cols5 = df3.columns[24:64]
 
-#df4 = df3.loc[df3['C1'] != 0]
-#df4 = df4[train_cols2]
-#train_for = df4.loc[:, (df4 != 0).any(axis=0)]
-#logit = sm.Logit(df3['C1'], df3[train_for.columns[:]])
-#result = logit.fit()
-
-logit={}
+ols={}
 result = {}
 for i in views_for:
     try:
@@ -125,30 +104,9 @@ for i in views_for:
         df4 = df4[train_cols]
         train_for = df4.loc[:, (df4 != 0).any(axis=0)]
         result['r_' + i] = train_for.columns[:]
-        logit['l_' + i] = sm.OLS(df3[i], df3[train_for.columns[:]]).fit()
+        ols['l_' + i] = sm.OLS(df3[i], df3[train_for.columns[:]]).fit()
     except:
         pass
-#        try:
-#            df4 = df3.loc[df3[i] != 0]
-#            df4 = df4[train_cols2]
-#            train_for = df4.loc[:, (df4 != 0).any(axis=0)]
-#            result['r_' + i] = train_for.columns[:]
-#            logit['l_' + i] = sm.OLS(df3[i], df3[train_for.columns[:]]).fit()
-#        except:
-#            try:
-#                df4 = df3.loc[df3[i] != 0]
-#                df4 = df4[train_cols3]
-#                train_for = df4.loc[:, (df4 != 0).any(axis=0)]
-#                result['r_' + i] = train_for.columns[:]
-#                logit['l_' + i] = sm.OLS(df3[i], df3[train_for.columns[:]]).fit()
-#            except:
-#                df4 = df3.loc[df3[i] != 0]
-#                df4 = df4[train_cols4]
-#                train_for = df4.loc[:, (df4 != 0).any(axis=0)]
-#                result['r_' + i] = train_for.columns[:]
-#                logit['l_' + i] = sm.OLS(df3[i], df3[train_for.columns[:]]).fit()
-    
-#res = logit['l_C1'].fit()
     
 views_test = pd.read_csv(r'test_set.csv')
 test2 = pd.merge(df2, views_test, on='Game_ID', how='inner')
@@ -158,21 +116,14 @@ test2 = test2.drop('Team_Minutes_H',1)
 test_country = pd.DataFrame()
 test_country['Game_ID'] = views_test['Game_ID']
 for j in views_for:
-    test_country[j] =logit['l_' + j].predict(test2[result['r_' + j]])
+    test_country[j] =ols['l_' + j].predict(test2[result['r_' + j]])
 test_country['Total_Viewers'] = test_country.sum(axis=1)
 test_country['Total_Viewers'] = test_country['Total_Viewers'] - test_country['Game_ID']
 
 test2.to_csv('test2.csv')
 test_country.to_csv('test_country.csv')
 
-    
 
-
-#result.summary()
-#result.conf_int()
-
-#game = game.groupby(['Game_ID', 'Game_Date'])
-#game.to_csv('game.csv')
 
 
 
