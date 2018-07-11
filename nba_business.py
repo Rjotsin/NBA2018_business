@@ -15,28 +15,35 @@ views = views.pivot(index='Game_ID', columns='Country', values='Rounded Viewers'
 views['C176'] = views['C176']/100000
 #views.to_csv('views.csv')
 
-filler = pd.DataFrame()
 game = pd.read_csv(r'game_data.csv')
 game['Game_Date'] = pd.to_datetime(game['Game_Date'])
 dfyear = pd.get_dummies('y' + game['Game_Date'].dt.strftime('%y'))
 dfmonth = pd.get_dummies('m' + game['Game_Date'].dt.strftime('%m'))
 dfday = pd.get_dummies('d' + game['Game_Date'].dt.strftime('%d'))
 game['Season_Num'] = np.where(game['Season']=='2016-17', 0,1)
-game = game.join(dfyear)
-game = game.join(dfmonth)
-game = game.join(dfday)
-#game['Final_Score'] = game.groupby(['Season','Team', 'Location', 
-#    'Wins_Entering_Gm','Losses_Entering_Gm','Game_Year','Game_Month')['Final_Score']\
-#    .transform(lambda x: x.fillna(x.mean()))
-
-
 dfTeam = pd.get_dummies(game['Team'])
 dfLocation = pd.get_dummies(game['Location'])
-
 dfgame = game.join(dfTeam)
 dfgame = dfgame.join(dfLocation)
 dfgame = dfgame.drop('Team',1)
 dfgame = dfgame.drop('Location',1)
+dfgame = dfgame.join(dfyear)
+dfgame = dfgame.join(dfmonth)
+dfgame = dfgame.join(dfday)
+gp =dfgame.columns[14:57].tolist()
+
+
+dfgame['Final_Score'] = dfgame.groupby(gp)['Final_Score'].transform(lambda x: x.fillna(x.mean()))
+dfgame.to_csv('gametst.csv')
+
+
+#dfTeam = pd.get_dummies(game['Team'])
+#dfLocation = pd.get_dummies(game['Location'])
+#
+#dfgame = game.join(dfTeam)
+#dfgame = dfgame.join(dfLocation)
+#dfgame = dfgame.drop('Team',1)
+#dfgame = dfgame.drop('Location',1)
 
 
 df = pd.merge(dfgame, views, on='Game_ID', how='inner')
