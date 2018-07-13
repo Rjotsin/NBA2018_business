@@ -9,6 +9,8 @@ Created on Tue Jul 10 18:15:26 2018
 import pandas as pd
 import statsmodels.api as sm
 import numpy as np
+import xgboost as xg
+
 
 np.random.seed(1)
 
@@ -112,52 +114,22 @@ df3 = df3.drop('Team_Minutes_H',1)
 train_cols = df3.columns[2:75] #99-31 = 68 + 7 = 75
 views_for = views.columns.tolist()
 
-cols = {}
+#cols = {}
+#
+#from sklearn import datasets
+#from sklearn.feature_selection import RFE
+#from sklearn.linear_model import LogisticRegression
+#logreg = LogisticRegression()
+#rfe = RFE(logreg, 20)
+#for k in views_for:
+#    cols['rfe' + k] = rfe.fit(df3[train_cols], df3[k])
+#
+#
+#
+#train_cols2 = df3.columns[2:27].union(df3.columns[28:68])
+#train_cols3 = df3.columns[2:58]
+#train_cols4 = df3.columns[12:58]
 
-from sklearn import datasets
-from sklearn.feature_selection import RFE
-from sklearn.linear_model import LogisticRegression
-logreg = LogisticRegression()
-rfe = RFE(logreg, 20)
-for k in views_for:
-    cols['rfe' + k] = rfe.fit(df3[train_cols], df3[k])
-
-
-
-train_cols2 = df3.columns[2:27].union(df3.columns[28:68])
-train_cols3 = df3.columns[2:58]
-train_cols4 = df3.columns[12:58]
-
-
-logit={}
-result = {}
-for i in views_for:
-    try:
-        df4 = df3.loc[df3[i] != 0]
-        train_for = df4[train_cols].apply(np.log)
-        result['r_' + i] = train_for.columns[:]
-        logit['l_' + i] = sm.Logit(df3[i], df3[train_for.columns[:]]).fit()
-    except:
-        try:
-            df4 = df3.loc[df3[i] != 0]
-            df4 = df4[train_cols2]
-            train_for = df4.loc[:, (df4 != 0).any(axis=0)]
-            result['r_' + i] = train_for.columns[:]
-            logit['l_' + i] = sm.Logit(df3[i], df3[train_for.columns[:]]).fit()
-        except:
-            try:
-                df4 = df3.loc[df3[i] != 0]
-                df4 = df4[train_cols3]
-                train_for = df4.loc[:, (df4 != 0).any(axis=0)]
-                result['r_' + i] = train_for.columns[:]
-                logit['l_' + i] = sm.Logit(df3[i], df3[train_for.columns[:]]).fit()
-            except:
-                df4 = df3.loc[df3[i] != 0]
-                df4 = df4[train_cols4]
-                train_for = df4.loc[:, (df4 != 0).any(axis=0)]
-                result['r_' + i] = train_for.columns[:]
-                logit['l_' + i] = sm.Logit(df3[i], df3[train_for.columns[:]]).fit()
-    
 views_test = pd.read_csv(r'test_set.csv')
 test2 = pd.merge(df2, views_test, on='Game_ID', how='inner')
 test2.rename(columns={'Team_Minutes_A':'Team_Minutes'}, inplace=True)
@@ -165,8 +137,55 @@ test2 = test2.drop('Team_Minutes_H',1)
 
 test_country = pd.DataFrame()
 test_country['Game_ID'] = views_test['Game_ID']
+
+#dtrain = xg.DMatrix(X_train, label=y_train)
+#dtest = xg.DMatrix(X_test, label=y_test)
+
+
+#result = {}
+#model = XGBClassifier()
+for i in views_for:
+    dtrain = xg.DMatrix(df3[train_cols],label = df3[i])
 for j in views_for:
-    test_country[j] =logit['l_' + j].predict(test2[result['r_' + j]])
+    dtest =xg.DMatrix(test2[train_cols],label = df3[j])
+    
+param = {
+    'max_depth': 3,  # the maximum depth of each tree
+    'eta': 0.3,  # the training step for each iteration
+    'silent': 1,  # logging mode - quiet
+    'objective': 'multi:softprob',  # error evaluation for multiclass training
+    'num_class': 3}  # the number of classes that exist in this datset
+num_round = 100  # the number of training iterations
+
+#    try:
+#        df4 = df3.loc[df3[i] != 0]
+#        train_for = df4[train_cols].apply(np.log)
+#        result['r_' + i] = train_for.columns[:]
+#        logit['l_' + i] = sm.Logit(df3[i], df3[train_for.columns[:]]).fit()
+#    except:
+#        try:
+#            df4 = df3.loc[df3[i] != 0]
+#            df4 = df4[train_cols2]
+#            train_for = df4.loc[:, (df4 != 0).any(axis=0)]
+#            result['r_' + i] = train_for.columns[:]
+#            logit['l_' + i] = sm.Logit(df3[i], df3[train_for.columns[:]]).fit()
+#        except:
+#            try:
+#                df4 = df3.loc[df3[i] != 0]
+#                df4 = df4[train_cols3]
+#                train_for = df4.loc[:, (df4 != 0).any(axis=0)]
+#                result['r_' + i] = train_for.columns[:]
+#                logit['l_' + i] = sm.Logit(df3[i], df3[train_for.columns[:]]).fit()
+#            except:
+#                df4 = df3.loc[df3[i] != 0]
+#                df4 = df4[train_cols4]
+#                train_for = df4.loc[:, (df4 != 0).any(axis=0)]
+#                result['r_' + i] = train_for.columns[:]
+#                logit['l_' + i] = sm.Logit(df3[i], df3[train_for.columns[:]]).fit()
+    
+result = {}
+bst = xg.train(param, dtrain, num_round)
+
 test_country['Total_Viewers'] = test_country.sum(axis=1)
 test_country['Total_Viewers'] = test_country['Total_Viewers'] - test_country['Game_ID']
 
