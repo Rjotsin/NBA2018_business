@@ -9,7 +9,7 @@ Created on Tue Jul 10 18:15:26 2018
 import pandas as pd
 import statsmodels.api as sm
 import numpy as np
-import xgboost as xg
+from xgboost import XGBRegressor
 
 
 np.random.seed(1)
@@ -141,21 +141,30 @@ test_country['Game_ID'] = views_test['Game_ID']
 #dtrain = xg.DMatrix(X_train, label=y_train)
 #dtest = xg.DMatrix(X_test, label=y_test)
 
+model = XGBRegressor()
+result = {}
 
-#result = {}
-#model = XGBClassifier()
 for i in views_for:
-    dtrain = xg.DMatrix(df3[train_cols],label = df3[i])
-for j in views_for:
-    dtest =xg.DMatrix(test2[train_cols],label = df3[j])
+    model.fit(df3[train_cols],df3[i])
+    result[i] = model.predict(test2[train_cols])
+
+test_country2= pd.DataFrame(result)
+test_country2['Game_ID'] = views_test['Game_ID']
+test_country2.to_csv('test_country2.csv')
+
+
+#for i in views_for:
+#    dtrain = xg.DMatrix(df3[train_cols],label = df3[i])
+#for j in views_for:
+#    dtest =xg.DMatrix(test2[train_cols],label = df3[j])
     
-param = {
-    'max_depth': 3,  # the maximum depth of each tree
-    'eta': 0.3,  # the training step for each iteration
-    'silent': 1,  # logging mode - quiet
-    'objective': 'multi:softprob',  # error evaluation for multiclass training
-    'num_class': 3}  # the number of classes that exist in this datset
-num_round = 100  # the number of training iterations
+#param = {
+#    'max_depth': 3,  # the maximum depth of each tree
+#    'eta': 0.3,  # the training step for each iteration
+#    'silent': 1,  # logging mode - quiet
+#    'objective': 'multi:softprob',  # error evaluation for multiclass training
+#    'num_class': 3}  # the number of classes that exist in this datset
+#num_round = 100  # the number of training iterations
 
 #    try:
 #        df4 = df3.loc[df3[i] != 0]
@@ -182,17 +191,12 @@ num_round = 100  # the number of training iterations
 #                train_for = df4.loc[:, (df4 != 0).any(axis=0)]
 #                result['r_' + i] = train_for.columns[:]
 #                logit['l_' + i] = sm.Logit(df3[i], df3[train_for.columns[:]]).fit()
-    
-result = {}
-bst = xg.train(param, dtrain, num_round)
-
-test_country['Total_Viewers'] = test_country.sum(axis=1)
-test_country['Total_Viewers'] = test_country['Total_Viewers'] - test_country['Game_ID']
-
-test2.to_csv('test2.csv')
-test_country.to_csv('test_country.csv')
-
-
-
-
-
+#    
+#result = {}
+#bst = xg.train(param, dtrain, num_round)
+#
+#test_country['Total_Viewers'] = test_country.sum(axis=1)
+#test_country['Total_Viewers'] = test_country['Total_Viewers'] - test_country['Game_ID']
+#
+#test2.to_csv('test2.csv')
+#test_country.to_csv('test_country.csv')
