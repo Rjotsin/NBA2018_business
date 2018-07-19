@@ -1,0 +1,76 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Wed Jul 18 21:21:06 2018
+
+@author: rjotsin
+"""
+***********
+Streaks
+***********
+
+With GameResults as (
+  select 
+    season, game_id, game_date, team, location, wins_entering_gm, losses_entering_gm, final_score, case when LEAD(wins_entering_gm,1) over (PARTITION by team order by game_id) > wins_entering_gm then 't' 
+  when LEAD(wins_entering_gm,1) over (PARTITION by team order by game_id) = wins_entering_gm then 'f' when final_score = max(final_score) over (PARTITION by game_id) then 't' else 'f' end as result
+  from game_data
+  order by 2, 5 desc
+  ),
+
+new_streak as (
+  select
+    *,
+    case when
+  result = 't' 
+  and LAG (result,1) over (PARTITION by team order by game_id) = 'f'
+    then 1 else 0 end as new_streak,
+    case when 
+    result = 'f'
+    and LAG (result,1) over (PARTITION by team order by game_id) = 't'
+       then 1 else 0
+    end as loss_streak
+  from GameResults
+  order by 2, 5 desc
+  ),
+
+streak as (
+  select
+    season, game_id, game_date, team, location, wins_entering_gm, losses_entering_gm, result,
+  sum(new_streak) over (partition by team order by game_id rows between UNBOUNDED PRECEDING and current row) as streak_no, NULL as streak_loss
+  from new_streak
+  where result = 't'
+  UNION
+  select
+    season, game_id, game_date, team, location, wins_entering_gm, losses_entering_gm, result, NULL as streak_no,
+    sum(loss_streak) over (partition by team order by game_id rows between UNBOUNDED PRECEDING and current row) as streak_loss
+  from new_streak
+  where result = 'f'
+  )
+select season, game_id, game_date, team, location, wins_entering_gm, losses_entering_gm, result, LAG(streak_win_after) over(partition by team order by game_id) as streak_win_before, LAG(streak_loss_after) over(partition by team order by game_id) as streak_loss_before
+from (
+select 
+  season, game_id, game_date, team, location, wins_entering_gm, losses_entering_gm, result,
+   count(streak_no) over (partition by team, streak_no order by game_id rows between UNBOUNDED PRECEDING and current row) as streak_win_after, 
+   count(streak_loss) over (partition by team, streak_loss order by game_id rows between UNBOUNDED PRECEDING and current row) as streak_loss_after
+  from streak
+  )
+order by 2, 5 desc
+
+***********
+Pace
+***********
+
+select Team, avg(q4pace) as q4pace, avg(l2mpace) as l2mpace
+from (
+    select *, Final_Score - Qtr_4_Score as q4pace, Final_Score - L2M_Score as l2mpace
+    from game_data
+  )
+group by 1
+
+***********
+All Stars
+***********
+
+select Game_ID, sum(case when ASG_Team <> 'None' and  Active_Status = 'Active' then 1 else 0 end) 
+from [pd]
+group by 1
